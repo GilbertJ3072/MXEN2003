@@ -6,42 +6,80 @@
 #include "Controller.h"
 #include "C:\Users\jackg\Desktop\University\2.1\MXEN2003\mcp-vs-main\lib\adc\adc.h" //minimal adc lib
 
+volatile uint8_t databyte1 = 0;
+volatile uint8_t databyte2 = 0;
+volatile uint8_t Lvertical = 0;
+volatile uint8_t Rvertical = 0;
+
+volatile uint16_t distance = 0;
+volatile uint16_t voltage = 0;
+
+volatile uint16_t RangeSensorLeftValue = 0;
+volatile uint16_t RangeSensorRightValue = 0;
+volatile uint16_t RangeSensorCentreValue = 0;
+
 int main(void)
 {
-  serial0_init();
-  adc_init(); //initialse ADC
-  _delay_ms(20); //it's a good idea to wait a bit after your init section 
+    //main function initialization
+    serial2_init();
+    serial0_init();
+    milliseconds_init();
+    adc_init();
+    lcd_init();
+    uint32_t current_ms = 0;
+    uint32_t last_send_ms = 0;
+    uint8_t recievedData[3]; //recieved data array
+    char serial_string[60] = {0}; // String used for printing to terminal
+    while(1)
+    {
+        //main loop
+        current_ms = milliseconds_now();
+        
+        Lvertical = adc_read(15)/5;
+        Rvertical = adc_read(0)/5;
+        
+        databyte1 = Lvertical;
+        databyte2 = Rvertical;
+        //sending section
+        if( (current_ms-last_send_ms) >= 100) //sending rate controlled here
+        {
+            //Function takes the number of bytes to send followed by the databytes as arguments
+            serial2_write_bytes(2, databyte1, databyte2); 
+            last_send_ms = current_ms;
+        }
+        if(serial2_available()) //Returns true if new data available on serial buffer
+        {
+            //Function takes the array to return data to and the number of bytes to be read.
+            serial2_get_data(recievedData,3); 
+        }
 
-  uint16_t adcVal0 = 0;
-  uint16_t adcVal1 = 0;
+        //LCD SHIT
 
-  cli();
-  TCCR1A = 0;
-  TCCR1B = 0;
+        RangeSensorCentreValue = recievedData[0];
+        RangeSensorLeftValue = recievedData[1];
+        RangeSensorRightValue = recievedData[2];
 
-  TCCR1A |= (1 << COM1A1); //PWM clear on up, set on down
-  TCCR1A |= (1 << COM1B1); //PWM clear on up, set on down
+        lcd_clrscr();
+        sprintf(serial_string, "%u %u %u", RangeSensorCentreValue, RangeSensorLeftValue, RangeSensorRightValue);
+        lcd_goto(0x40);
+        lcd_puts(serial_string);
+        if (RangeSensorCentreValue > 80){
+            lcd_goto(0);
+            lcd_puts("Stationary");
+        }
+        else if (RangeSensorLeftValue > 80){
+            lcd_goto(0);
+            lcd_puts("Turn Right");
+        }
+        else if (RangeSensorRightValue > 80){
+            lcd_goto(0);
+            lcd_puts("Turn Left");
+        }
+        else{
+            lcd_goto(0);
+            lcd_puts("Continue Forward");
+        }
 
-  TCCR1B |= (1 << CS11); //Prescaler of 8
-  TCCR1B |= (1 << WGM13); //Mode 8, PWM ICR1 as TOP
-
-  //TIMSK1 = (1 << ICIE1); //setting to mode for capture (ICR1 is vector) 
-  ICR1 = 20000; //Top Value (makes period 20ms)
-  OCR1A = 1000; //Compare Value (duty) for horizontal joystick
-  OCR1B = 1000; //Compare Value (duty) for vertical joystick
-
-  DDRF = 0; //Ports for ADC
-  PORTF = 0;
-
-  DDRB = 0xFF; //Ports for PWM
-
-  sei();
-
-  while(1){
-    adcVal0 = adc_read(0)+1000; //ADC ranges from 0-1023 so adding 1000 fits roughly within our 1000-2000 range of angles
-    adcVal1 = adc_read(1)+1000;
-    OCR1A = adcVal0;
-    OCR1B = adcVal1;
-    _delay_ms(10);
-  }
+        _delay_ms(10);
+    }
 } 
