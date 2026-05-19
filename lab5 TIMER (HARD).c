@@ -30,9 +30,9 @@ int main(void)
   DDRD = 0;
   PORTD = 0;
 
-  EICRA |= (1<<ISC01) | (1<<ISC00);
-  EICRA |= (1<<ISC11) | (1<<ISC10);
-  EIMSK = (1<<INT0) | (1<<INT1);
+  EICRA |= (1<<ISC01) | (1<<ISC00); //Triggers on rising edge
+  EICRA |= (1<<ISC11) | (1<<ISC10); //Triggers on rising edge
+  EIMSK = (1<<INT0) | (1<<INT1); //Enable INT0 and INT1
 
   sei();
 
@@ -46,7 +46,7 @@ int main(void)
   }
 }
 
-ISR(TIMER1_CAPT_vect){ 
+ISR(TIMER1_CAPT_vect){ // Timer functionality 
   MScount += 1;
   if (MScount == 1000){
     MScount = 0;
@@ -58,7 +58,7 @@ ISR(TIMER1_CAPT_vect){
   }
 }
 
-ISR(INT1_vect)
+ISR(INT1_vect) // Pause/Play button (Toggles the timer interrupt)
 {
   uint32_t Time = milliseconds_now();
   static uint32_t previousTime = 0;
@@ -68,7 +68,7 @@ ISR(INT1_vect)
   }
 }
 
-ISR(INT0_vect)
+ISR(INT0_vect) // Reset Button
 {
   uint32_t Time = milliseconds_now();
   static uint32_t previousTime = 0;
