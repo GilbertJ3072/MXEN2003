@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <util/delay.h>
 #include <stdio.h>
-#include <stdio.h>
 
 /************************************************************************
 Serial functions included for simulation on TinkerCad 
